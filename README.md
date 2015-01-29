@@ -1,6 +1,7 @@
 # CmdLineJobmine
 Command line interface to access jobmine
 
-\*requires CasperJS (`npm install -g casperjs`)
-
-Should be run with `--ignore-ssl-errors=true`
+Installation
+------------
+- requires CasperJS and PhantomJS (`npm install -g casperjs phantomjs`)
+- run with `casperjs scraper.js --ignore-ssl-errors=true (apps|interviews) <username> <password>`
