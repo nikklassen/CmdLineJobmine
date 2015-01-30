@@ -120,7 +120,8 @@ function getApps() {
                 apps.push({
                     title: cells[1].innerText.trim(),
                     employer: cells[2].innerText.trim(),
-                    status: cells[6].innerText.trim()
+                    jobStatus: (cells[5].innerText.trim() || ''),
+                    appStatus: (cells[6].innerText.trim() || '')
                 })
             }
 
@@ -136,7 +137,7 @@ function getApps() {
         var rows = []
         var colours = []
         apps.forEach(function(a) {
-            switch (a.status) {
+            switch (a.appStatus) {
                 case 'Not Selected':
                     colours.push('red')
                 totals.rejected += 1
@@ -152,10 +153,10 @@ function getApps() {
                 break
             }
 
-            rows.push([a.title, a.employer, a.status])
+            rows.push([a.title, a.employer, a.jobStatus, a.appStatus])
         })
 
-        var headers = ['Title', 'Employer', 'Status']
+        var headers = ['Title', 'Employer', 'Job Status', 'App Status']
 
         printTable(headers, rows, colours)
 
