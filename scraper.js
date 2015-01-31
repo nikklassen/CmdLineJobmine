@@ -131,6 +131,7 @@ function getApps() {
         var totals = {
             selected: 0,
             rejected: 0,
+            alternate: 0,
             available: 0
         }
 
@@ -147,6 +148,10 @@ function getApps() {
                     colours.push('green')
                 totals.selected += 1
                 break
+                case 'Alternate':
+                    colours.push('cyan')
+                totals.alternate += 1
+                break
                 default:
                     colours.push('')
                 totals.available += 1
@@ -162,6 +167,9 @@ function getApps() {
 
         console.log('')
         console.log(colour('Selected: ' + paddingRight(totals.selected, 20), 'green'))
+        if (totals.alternate !== 0) {
+            console.log(colour('Alternate: ' + totals.alternate, 'cyan'))
+        }
         console.log('Available: ' + paddingRight(totals.available, 20))
         console.log(colour('Not selected: ' + totals.rejected, 'red'))
     })
