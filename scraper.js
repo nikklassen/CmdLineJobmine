@@ -255,19 +255,27 @@ function getInterviews() {
             }
         })
 
+        var oneMinute = 60000;
+        var twoDaysFromNow = new Date(new Date().getTime() + 2 * 24 * 60 * oneMinute);
+
         var headers = ['Employer', 'Job Title', 'Date', 'Type', 'Start Time', 'Length', 'Room']
         var rows = []
         var colours = []
+
         interviews.individual.forEach(function (r) {
             if (r.room === '') {
                 r.room = 'N/A'
             }
 
+            var startDate = new Date(r.date + ' ' + r.time)
             rows.push([r.employer, r.job, r.date, r.type, r.time, r.duration, r.room]);
-            if (new Date(r.date + ' ' + r.time) > new Date()) {
+
+            if (startDate < new Date()) {
+                colours.push('')
+            } else if (startDate < twoDaysFromNow) {
                 colours.push('green')
             } else {
-                colours.push('')
+                colours.push('cyan')
             }
         })
 
@@ -277,16 +285,19 @@ function getInterviews() {
             headers = ['Employer', 'Job Title', 'Date', 'Start Time', 'Duration', 'Room']
             rows = []
             colours = []
+
             interviews.group.forEach(function (r) {
                 var startDate = new Date(r.date + ' ' + r.start)
-                var duration = Math.round((new Date(r.date + ' ' + r.end) - startDate) / 60000) 
+                var duration = Math.round((new Date(r.date + ' ' + r.end) - startDate) / oneMinute)
 
                 rows.push([r.employer, r.job, r.date, r.start, duration.toString(), r.room])
 
-                if (startDate > new Date()) {
+                if (startDate < new Date()) {
+                    colours.push('')
+                } else if (startDate < twoDaysFromNow) {
                     colours.push('green')
                 } else {
-                    colours.push('')
+                    colours.push('cyan')
                 }
             })
 
