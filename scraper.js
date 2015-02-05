@@ -33,6 +33,9 @@ function colour(s, c) {
         case 'cyan':
             ec = '\033[36;1m'
         break
+        case 'yellow':
+            ec = '\033[33;1m'
+        break
     }
     return ec + s + '\033[30;0m'
 }
@@ -111,18 +114,36 @@ function printTable(headers, rows, colours, title) {
 function getApps() {
     casper.thenOpen('https://jobmine.ccol.uwaterloo.ca/psc/SS/EMPLOYEE/WORK/c/UW_CO_STUDENTS.UW_CO_APP_SUMMARY.GBL', function () {
         var apps = this.evaluate(function() {
+            // Get the "Active apps" table
+            var appT = document.querySelectorAll('table.PSLEVEL1GRID > tbody')[0]
+            var appActive = {}
+            var cells = []
+
+            for (var i = 1; i < appT.rows.length; i++) {
+                cells = appT.rows[i].cells
+
+                // title_employer
+                var jobKey = cells[1].textContent.trim() + '_' + cells[2].textContent.trim()
+                appActive[jobKey] = true
+            }
+
+
             // Get the "All Apps" table
-            var appT = document.querySelectorAll('table.PSLEVEL1GRID > tbody')[1]
+            appT = document.querySelectorAll('table.PSLEVEL1GRID > tbody')[1]
             var apps = []
             // Skip the header row
-            for (var i = 1; i < appT.rows.length; i++) {
-                var cells = appT.rows[i].cells
-                apps.push({
-                    title: cells[1].innerText.trim(),
-                    employer: cells[2].innerText.trim(),
-                    jobStatus: (cells[5].innerText.trim() || ''),
-                    appStatus: (cells[6].innerText.trim() || '')
-                })
+            for (i = 1; i < appT.rows.length; i++) {
+                cells = appT.rows[i].cells
+
+                var app = {
+                    title: cells[1].textContent.trim(),
+                    employer: cells[2].textContent.trim(),
+                    jobStatus: (cells[5].textContent.trim() || ''),
+                    appStatus: (cells[6].textContent.trim() || '')
+                }
+
+                app.active = (appActive[app.title + '_' + app.employer] || false)
+                apps.push(app)
             }
 
             return apps
@@ -152,6 +173,24 @@ function getApps() {
                     colours.push('cyan')
                 totals.alternate += 1
                 break
+                case '':
+                    if (a.jobStatus === 'Ranking Completed') {
+                    if (a.active === true) {
+                        colours.push('yellow')
+                        totals.selected += 1
+                    } else {
+                        colours.push('red')
+                        totals.rejected += 1
+                    }
+                }
+                break
+                case 'Applied':
+                    if (a.jobStatus === 'Screened') {
+                    colours.push('green')
+                    totals.selected += 1
+                    break
+                }
+                /* fallthrough */
                 default:
                     colours.push('')
                 totals.available += 1
@@ -190,59 +229,59 @@ function getInterviews() {
 
             var individual = []
             var ws = new RegExp(/^\s*$/)
-            if (interviewT.rows.length >= 2 && !ws.test(interviewT.rows[1].cells[1].innerText)) {
+            if (interviewT.rows.length >= 2 && !ws.test(interviewT.rows[1].cells[1].textContent)) {
                 for (i = 1; i < interviewT.rows.length; i++) {
                     cells = interviewT.rows[i].cells
 
                     individual.push({
-                        employer: cells[2].innerText.trim(),
-                        job: cells[3].innerText.trim(),
-                        date: cells[4].innerText.trim(),
-                        type: cells[5].innerText.trim(),
-                        time: cells[7].innerText.trim(),
-                        duration: cells[8].innerText.trim(),
-                        room: cells[9].innerText.trim()
+                        employer: cells[2].textContent.trim(),
+                        job: cells[3].textContent.trim(),
+                        date: cells[4].textContent.trim(),
+                        type: cells[5].textContent.trim(),
+                        time: cells[7].textContent.trim(),
+                        duration: cells[8].textContent.trim(),
+                        room: cells[9].textContent.trim()
                     })
                 }
             }
 
             var group = []
-            if (groupT.rows.length >= 2 && !ws.test(groupT.rows[1].cells[1].innerText)) {
+            if (groupT.rows.length >= 2 && !ws.test(groupT.rows[1].cells[1].textContent)) {
                 for (i = 1; i < groupT.rows.length; i++) {
                     cells = groupT.rows[i].cells
 
                     group.push({
-                        employer: cells[2].innerText.trim(),
-                        job: cells[3].innerText.trim(),
-                        date: cells[4].innerText.trim(),
-                        start: cells[5].innerText.trim(),
-                        end: cells[6].innerText.trim(),
-                        room: cells[7].innerText.trim()
+                        employer: cells[2].textContent.trim(),
+                        job: cells[3].textContent.trim(),
+                        date: cells[4].textContent.trim(),
+                        start: cells[5].textContent.trim(),
+                        end: cells[6].textContent.trim(),
+                        room: cells[7].textContent.trim()
                     })
                 }
             }
 
             var special = []
-            if (specialT.rows.length >= 2 && !ws.test(specialT.rows[1].cells[1].innerText)) {
+            if (specialT.rows.length >= 2 && !ws.test(specialT.rows[1].cells[1].textContent)) {
                 for (i = 1; i < specialT.rows.length; i++) {
                     cells = specialT.rows[i].cells
 
                     special.push({
-                        employer: cells[2].innerText.trim(),
-                        job: cells[3].innerText.trim(),
-                        instructions: cells[4].innerText.trim()
+                        employer: cells[2].textContent.trim(),
+                        job: cells[3].textContent.trim(),
+                        instructions: cells[4].textContent.trim()
                     })
                 }
             }
 
             var cancelled = []
-            if (cancelledT.rows.length >= 2 && !ws.test(cancelledT.rows[1].cells[1].innerText)) {
+            if (cancelledT.rows.length >= 2 && !ws.test(cancelledT.rows[1].cells[1].textContent)) {
                 for (i = 1; i < cancelledT.rows.length; i++) {
                     cells = cancelledT.rows[i].cells
 
                     cancelled.push({
-                        employer: cells[2].innerText.trim(),
-                        job: cells[3].innerText.trim()
+                        employer: cells[2].textContent.trim(),
+                        job: cells[3].textContent.trim()
                     })
                 }
             }
