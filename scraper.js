@@ -1,5 +1,9 @@
 /* globals console, require */
 
+Array.prototype.has = function(v) {
+    return this.indexOf(v) !== -1;
+}
+
 function paddingRight(s, paddingValue) {
     var padding = '';
     for (var i = 0; i < paddingValue; i++) {
@@ -158,23 +162,22 @@ function getApps() {
 
         var rows = []
         var colours = []
+
         apps.forEach(function(a) {
-            switch (a.appStatus) {
-                case 'Not Selected':
-                    colours.push('red')
+            if (['Not Selected', 'Not Ranked', 'Ranked'].has(a.appStatus) ||
+               (a.appStatus === 'Applied' && a.jobStatus === 'Cancelled')) {
+                colours.push('red')
                 totals.rejected += 1
-                break
-                case 'Selected':
-                    case 'Scheduled':
-                    colours.push('green')
+            } else if (['Selected', 'Scheduled'].has(a.appStatus) ||
+                      (a.appStatus === 'Applied' && ['Screened', 'Applied'].has(a.jobStatus)) ||
+                      a.appStatus === 'Employed') {
+                colours.push('green')
                 totals.selected += 1
-                break
-                case 'Alternate':
-                    colours.push('cyan')
+            } else if (a.appStatus === 'Alternate') {
+                colours.push('cyan')
                 totals.alternate += 1
-                break
-                case '':
-                    if (a.jobStatus === 'Ranking Completed') {
+            } else if (a.appStatus === '') {
+                if (a.jobStatus === 'Ranking Completed') {
                     if (a.active === true) {
                         colours.push('yellow')
                         totals.selected += 1
@@ -183,18 +186,19 @@ function getApps() {
                         totals.rejected += 1
                     }
                 }
-                break
-                case 'Applied':
-                    if (a.jobStatus === 'Screened') {
-                    colours.push('green')
-                    totals.selected += 1
-                    break
+                // Jobmine bug -- observed to happen when rankings were 'unsubmitted'
+                else {
+                    if (a.active === true) {
+                        colours.push('green')
+                        totals.selected += 1
+                    } else {
+                        colours.push('red')
+                        totals.rejected += 1
+                    }
                 }
-                /* fallthrough */
-                default:
-                    colours.push('')
+            } else {
+                colours.push('')
                 totals.available += 1
-                break
             }
 
             rows.push([a.title, a.employer, a.jobStatus, a.appStatus])
