@@ -40,11 +40,18 @@ function colour(s, c) {
         case 'yellow':
             ec = '\033[33;1m'
         break
+        case 'purple':
+            ec = '\033[35;1m'
+        break
     }
     return ec + s + '\033[30;0m'
 }
 
 var casper = require('casper').create()
+
+casper.on('page.error', function (msg) {
+    this.echo('Error: ' + msg, 'ERROR');
+});
 
 casper.start('https://jobmine.ccol.uwaterloo.ca/psp/SS?cmd=login')
 
@@ -115,7 +122,21 @@ function printTable(headers, rows, colours, title) {
     }
 }
 
+function getPotentialOffers(casper, numActiveApps) {
+    casper.thenOpen('https://jobmine.ccol.uwaterloo.ca/psc/SS/EMPLOYEE/WORK/c/UW_CO_STUDENTS.UW_CO_JOBSRCH.GBL', function() {
+        var potentialOffers = this.evaluate(function(active) {
+            var availableApps = parseInt(document.getElementById('UW_CO_JOBSRCHDW_UW_CO_MAX_NUM_APPL').textContent, 10)
+            return availableApps + active - 50
+        }, numActiveApps)
+        console.log(colour('Potential offers: ' + potentialOffers, 'purple'))
+    })
+}
+
 function getApps() {
+
+    var activeApps = 0
+    var hasRanked = false
+
     casper.thenOpen('https://jobmine.ccol.uwaterloo.ca/psc/SS/EMPLOYEE/WORK/c/UW_CO_STUDENTS.UW_CO_APP_SUMMARY.GBL', function () {
         var apps = this.evaluate(function() {
             // Get the "Active apps" table
@@ -185,6 +206,7 @@ function getApps() {
                         colours.push('red')
                         totals.rejected += 1
                     }
+                    hasRanked = true
                 }
                 // Jobmine bug -- observed to happen when rankings were 'unsubmitted'
                 else {
@@ -202,6 +224,10 @@ function getApps() {
             }
 
             rows.push([a.title, a.employer, a.jobStatus, a.appStatus])
+
+            if (a.active) {
+                activeApps += 1
+            }
         })
 
         var headers = ['Title', 'Employer', 'Job Status', 'App Status']
@@ -209,12 +235,16 @@ function getApps() {
         printTable(headers, rows, colours)
 
         console.log('')
+        console.log('Available: ' + paddingRight(totals.available, 20))
         console.log(colour('Selected: ' + paddingRight(totals.selected, 20), 'green'))
         if (totals.alternate !== 0) {
             console.log(colour('Alternate: ' + totals.alternate, 'cyan'))
         }
-        console.log('Available: ' + paddingRight(totals.available, 20))
         console.log(colour('Not selected: ' + totals.rejected, 'red'))
+
+        if (hasRanked) {
+            getPotentialOffers(this, activeApps)
+        }
     })
 }
 
