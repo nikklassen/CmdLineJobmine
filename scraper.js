@@ -411,6 +411,113 @@ function getInterviews() {
     })
 }
 
+function getOpenRankings() {
+    casper.thenOpen('https://jobmine.ccol.uwaterloo.ca/psc/SS/EMPLOYEE/WORK/c/UW_CO_STUDENTS.UW_CO_STU_RNK2.GBL', function() {
+        var rankings = this.evaluate(function () {
+            var rankingT = document.querySelector('table.PSLEVEL1GRID')
+
+            var ws = new RegExp(/^\s*$/)
+            var getUserRank = new RegExp(/value="(.?)" selected="selected"/)
+
+            var rankings = []
+
+            if (rankingT.rows.length >= 2 && !ws.test(rankingT.rows[1].cells[1].textContent)) {
+                for (var i = 1; i < rankingT.rows.length; i++) {
+                    var cells = rankingT.rows[i].cells
+
+                    var ranking = {
+                        status: cells[1].textContent.trim(),
+                        employerRank: cells[2].textContent.trim(),
+                        title: cells[4].textContent.trim(),
+                        employer: cells[5].textContent.trim(),
+                        location: cells[6].textContent.trim(),
+                        open: cells[8].textContent.trim() + ' ' + cells[9].textContent.trim(),
+                        close: cells[10].textContent.trim() + ' ' + cells[11].textContent.trim()
+                    }
+
+                    var userRank = getUserRank.exec(cells[0].innerHTML)
+                    if (userRank === null) {
+                        ranking.userRank = 0
+                    } else if (userRank[1] === '') {
+                        ranking.userRank = 9
+                    } else {
+                        ranking.userRank = parseInt(userRank[1], 10)
+                    }
+
+                    rankings.push(ranking)
+                }
+            }
+
+            return rankings
+        })
+
+
+        var headers = ['My rank', 'Status', 'Employer Rank', 'Job Title', 'Employer', 'Location', 'Open', 'Close']
+        var rows = []
+        var colours = []
+
+        function compareUserRank(a, b) {
+            if (a.userRank !== b.userRank) {
+                return a.userRank - b.userRank
+            }
+            if (a.employer < b.employer) {
+                return -1
+            } else if (a.employer > b.employer) {
+                return 1
+            }
+            return 0
+        }
+
+        var sorted = rankings.filter(function (r) {
+            return r.employerRank === 'Offer'
+        })
+        .sort(compareUserRank)
+
+        .concat(rankings.filter(function (r) {
+            return r.employerRank !== 'Offer' && r.employerRank !== 'Not Ranked'
+        }).sort(compareUserRank))
+
+        .concat(rankings.filter(function (r) {
+            return r.employerRank === 'Not Ranked'
+        }).sort())
+
+        sorted.forEach(function (r) {
+            if (r.employerRank === 'Offer') {
+                colours.push('green')
+            } else if (r.employerRank === 'Not Ranked') {
+                colours.push('red')
+            } else {
+                colours.push('')
+            }
+
+            rows.push([
+                r.userRank === 0 ? 'N/A' : r.userRank.toString(),
+                r.status,
+                r.employerRank,
+                r.title,
+                r.employer,
+                r.location,
+                r.open,
+                r.close
+            ])
+        })
+
+        printTable(headers, rows, colours, 'Rankings')
+    })
+}
+
+function getRankings() {
+
+    casper.thenOpen('https://jobmine.ccol.uwaterloo.ca/psc/SS/EMPLOYEE/WORK/c/UW_CO_STUDENTS.UW_CO_STU_RNK.GBL', function() {
+        if (this.getTitle().indexOf('Student Ranking') === -1) {
+            // Go to the open rankings page
+            getOpenRankings(this)
+        }
+
+        // TODO next term
+    })
+}
+
 switch (casper.cli.args[0]) {
     case 'apps':
         getApps()
@@ -418,8 +525,11 @@ switch (casper.cli.args[0]) {
     case 'interviews':
         getInterviews()
     break;
+    case 'rankings':
+        getRankings()
+    break
     default:
-        console.log('scraper.js --ignore-ssl-errors=true (apps|interviews) [ username ] [ password ]')
+        console.log('scraper.js --ignore-ssl-errors=true (apps|interviews|rankings) [ username ] [ password ]')
 }
 
 casper.run()
