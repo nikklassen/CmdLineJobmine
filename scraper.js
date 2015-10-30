@@ -122,6 +122,13 @@ function printTable(headers, rows, colours, title) {
     }
 }
 
+function tableIsEmpty(table, testColumn) {
+    if (typeof(testColumn) === 'undefined') {
+        testColumn = 1
+    }
+    return table.rows.length < 2 || /^\s*$/.test(table.rows[1].cells[testColumn].textContent);
+}
+
 function getPotentialOffers(casper, numActiveApps) {
     casper.thenOpen('https://jobmine.ccol.uwaterloo.ca/psc/SS/EMPLOYEE/WORK/c/UW_CO_STUDENTS.UW_CO_JOBSRCH.GBL', function() {
         var potentialOffers = this.evaluate(function(active) {
@@ -251,7 +258,7 @@ function getApps() {
 function getInterviews() {
     casper.thenOpen('https://jobmine.ccol.uwaterloo.ca/psc/SS/EMPLOYEE/WORK/c/UW_CO_STUDENTS.UW_CO_STU_INTVS')
     .then(function () {
-        var interviews = this.evaluate(function() {
+        var interviews = this.evaluate(function(tableIsEmpty) {
             var tables = document.querySelectorAll('table.PSLEVEL1GRID')
             var interviewT = tables[0],
             groupT = tables[1],
@@ -263,7 +270,7 @@ function getInterviews() {
 
             var individual = []
             var ws = new RegExp(/^\s*$/)
-            if (interviewT.rows.length >= 2 && !ws.test(interviewT.rows[1].cells[1].textContent)) {
+            if (!tableIsEmpty(interviewT)) {
                 for (i = 1; i < interviewT.rows.length; i++) {
                     cells = interviewT.rows[i].cells
 
@@ -280,7 +287,7 @@ function getInterviews() {
             }
 
             var group = []
-            if (groupT.rows.length >= 2 && !ws.test(groupT.rows[1].cells[1].textContent)) {
+            if (!tableIsEmpty(groupT)) {
                 for (i = 1; i < groupT.rows.length; i++) {
                     cells = groupT.rows[i].cells
 
@@ -296,7 +303,7 @@ function getInterviews() {
             }
 
             var special = []
-            if (specialT.rows.length >= 2 && !ws.test(specialT.rows[1].cells[1].textContent)) {
+            if (!tableIsEmpty(specialT)) {
                 for (i = 1; i < specialT.rows.length; i++) {
                     cells = specialT.rows[i].cells
 
@@ -309,7 +316,7 @@ function getInterviews() {
             }
 
             var cancelled = []
-            if (cancelledT.rows.length >= 2 && !ws.test(cancelledT.rows[1].cells[1].textContent)) {
+            if (!tableIsEmpty(cancelledT)) {
                 for (i = 1; i < cancelledT.rows.length; i++) {
                     cells = cancelledT.rows[i].cells
 
@@ -326,7 +333,7 @@ function getInterviews() {
                 special: special,
                 cancelled: cancelled
             }
-        })
+        }, tableIsEmpty)
 
         var oneMinute = 60000;
         var twoDaysFromNow = new Date(new Date().getTime() + 2 * 24 * 60 * oneMinute);
@@ -412,109 +419,151 @@ function getInterviews() {
 }
 
 function getOpenRankings() {
-    casper.thenOpen('https://jobmine.ccol.uwaterloo.ca/psc/SS/EMPLOYEE/WORK/c/UW_CO_STUDENTS.UW_CO_STU_RNK2.GBL', function() {
-        var rankings = this.evaluate(function () {
-            var rankingT = document.querySelector('table.PSLEVEL1GRID')
+    var rankings = this.evaluate(function (tableIsEmpty) {
+        var rankingT = document.querySelector('table.PSLEVEL1GRID')
 
-            var ws = new RegExp(/^\s*$/)
-            var getUserRank = new RegExp(/value="(.?)" selected="selected"/)
+        var getUserRank = new RegExp(/value="(.?)" selected="selected"/)
 
-            var rankings = []
+        var rankings = []
+        if (!tableIsEmpty(rankingT)) {
+            for (var i = 1; i < rankingT.rows.length; i++) {
+                var cells = rankingT.rows[i].cells
 
-            if (rankingT.rows.length >= 2 && !ws.test(rankingT.rows[1].cells[1].textContent)) {
-                for (var i = 1; i < rankingT.rows.length; i++) {
-                    var cells = rankingT.rows[i].cells
-
-                    var ranking = {
-                        status: cells[1].textContent.trim(),
-                        employerRank: cells[2].textContent.trim(),
-                        title: cells[4].textContent.trim(),
-                        employer: cells[5].textContent.trim(),
-                        location: cells[6].textContent.trim(),
-                        open: cells[8].textContent.trim() + ' ' + cells[9].textContent.trim(),
-                        close: cells[10].textContent.trim() + ' ' + cells[11].textContent.trim()
-                    }
-
-                    var userRank = getUserRank.exec(cells[0].innerHTML)
-                    if (userRank === null) {
-                        ranking.userRank = 0
-                    } else if (userRank[1] === '') {
-                        ranking.userRank = 9
-                    } else {
-                        ranking.userRank = parseInt(userRank[1], 10)
-                    }
-
-                    rankings.push(ranking)
+                var ranking = {
+                    status: cells[1].textContent.trim(),
+                    employerRank: cells[2].textContent.trim(),
+                    title: cells[4].textContent.trim(),
+                    employer: cells[5].textContent.trim(),
+                    location: cells[6].textContent.trim(),
+                    open: cells[8].textContent.trim() + ' ' + cells[9].textContent.trim(),
+                    close: cells[10].textContent.trim() + ' ' + cells[11].textContent.trim()
                 }
+
+                var userRank = getUserRank.exec(cells[0].innerHTML)
+                if (userRank === null) {
+                    ranking.userRank = 0
+                } else if (userRank[1] === '') {
+                    ranking.userRank = 9
+                } else {
+                    ranking.userRank = parseInt(userRank[1], 10)
+                }
+                rankings.push(ranking)
             }
-
-            return rankings
-        })
-
-
-        var headers = ['My rank', 'Status', 'Employer Rank', 'Job Title', 'Employer', 'Location', 'Open', 'Close']
-        var rows = []
-        var colours = []
-
-        function compareUserRank(a, b) {
-            if (a.userRank !== b.userRank) {
-                return a.userRank - b.userRank
-            }
-            if (a.employer < b.employer) {
-                return -1
-            } else if (a.employer > b.employer) {
-                return 1
-            }
-            return 0
         }
 
-        var sorted = rankings.filter(function (r) {
-            return r.employerRank === 'Offer'
-        })
-        .sort(compareUserRank)
+        return rankings
+    }, tableIsEmpty)
 
-        .concat(rankings.filter(function (r) {
-            return r.employerRank !== 'Offer' && r.employerRank !== 'Not Ranked'
-        }).sort(compareUserRank))
+    var headers = ['My rank', 'Status', 'Employer Rank', 'Job Title', 'Employer', 'Location', 'Open', 'Close']
+    var rows = []
+    var colours = []
 
-        .concat(rankings.filter(function (r) {
-            return r.employerRank === 'Not Ranked'
-        }).sort())
+    function compareUserRank(a, b) {
+        if (a.userRank !== b.userRank) {
+            return a.userRank - b.userRank
+        }
+        if (a.employer < b.employer) {
+            return -1
+        } else if (a.employer > b.employer) {
+            return 1
+        }
+        return 0
+    }
 
-        sorted.forEach(function (r) {
-            if (r.employerRank === 'Offer') {
-                colours.push('green')
-            } else if (r.employerRank === 'Not Ranked') {
-                colours.push('red')
-            } else {
-                colours.push('')
-            }
-
-            rows.push([
-                r.userRank === 0 ? 'N/A' : r.userRank.toString(),
-                r.status,
-                r.employerRank,
-                r.title,
-                r.employer,
-                r.location,
-                r.open,
-                r.close
-            ])
-        })
-
-        printTable(headers, rows, colours, 'Rankings')
+    var sorted = rankings.filter(function (r) {
+        return r.employerRank === 'Offer'
     })
+    .sort(compareUserRank)
+
+    .concat(rankings.filter(function (r) {
+        return r.employerRank !== 'Offer' && r.employerRank !== 'Not Ranked'
+    }).sort(compareUserRank))
+
+    .concat(rankings.filter(function (r) {
+        return r.employerRank === 'Not Ranked'
+    }).sort())
+
+    sorted.forEach(function (r) {
+        if (r.employerRank === 'Offer') {
+            colours.push('green')
+        } else if (r.employerRank === 'Not Ranked') {
+            colours.push('red')
+        } else {
+            colours.push('')
+        }
+
+        rows.push([
+            r.userRank === 0 ? 'N/A' : r.userRank.toString(),
+            r.status,
+            r.employerRank,
+            r.title,
+            r.employer,
+            r.location,
+            r.open,
+            r.close
+        ])
+    })
+
+    printTable(headers, rows, colours, 'Rankings')
+}
+
+function getClosedRankings() {
+    var rankings = this.evaluate(function(tableIsEmpty) {
+        var rankingT = document.querySelector('table.PSLEVEL1GRID')
+        var rankings = []
+
+        if (!tableIsEmpty(rankingT, 2)) {
+            for (var i = 1; i < rankingT.rows.length; i++) {
+                var cells = rankingT.rows[i].cells
+
+                var ranking = {
+                    title: cells[3].textContent.trim(),
+                    employer: cells[4].textContent.trim(),
+                    location: cells[5].textContent.trim(),
+                    open: cells[7].textContent.trim() + ' ' + cells[8].textContent.trim(),
+                    close: cells[9].textContent.trim() + ' ' + cells[10].textContent.trim()
+                }
+                rankings.push(ranking)
+            }
+        }
+
+        return rankings
+    }, tableIsEmpty)
+
+    var headers = ['Job Title', 'Employer', 'Location', 'Open', 'Close']
+    var rows = []
+    var colours = []
+    rankings.forEach(function (r) {
+        if (/^\s*$/.test(r.open)) {
+            colours.push('red')
+        } else {
+            colours.push('green')
+        }
+
+        rows.push([
+            r.title,
+            r.employer,
+            r.location,
+            r.open,
+            r.close
+        ])
+    })
+
+    printTable(headers, rows, colours, 'Rankings')
 }
 
 function getRankings() {
+    casper.thenOpen('https://jobmine.ccol.uwaterloo.ca/psc/SS/EMPLOYEE/WORK/c/UW_CO_STUDENTS.UW_CO_STU_RNK2.GBL', function() {
+        var rankingsClosed = this.evaluate(function() {
+            var rankingT = document.querySelector('table.PSLEVEL1GRID');
+            return /^\s*$/.test(rankingT.rows[1].cells[1].textContent)
+        })
 
-    casper.thenOpen('https://jobmine.ccol.uwaterloo.ca/psc/SS/EMPLOYEE/WORK/c/UW_CO_STUDENTS.UW_CO_STU_RNK.GBL', function() {
-        if (this.getTitle().indexOf('Student Ranking') === -1) {
-            // Go to the open rankings page
-            getOpenRankings(this)
+        if (rankingsClosed) {
+            getClosedRankings.call(this);
+        } else {
+            getOpenRankings.call(this);
         }
-
-        // TODO next term
     })
 }
 
@@ -529,7 +578,7 @@ switch (casper.cli.args[0]) {
         getRankings()
     break
     default:
-        console.log('scraper.js --ignore-ssl-errors=true (apps|interviews|rankings) [ username ] [ password ]')
+        console.log('scraper.js (apps|interviews|rankings) [ username ] [ password ]')
 }
 
 casper.run()
