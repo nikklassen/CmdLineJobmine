@@ -29,37 +29,43 @@ function colour(s, c) {
     var ec = ''
     switch (c) {
         case 'red':
-            ec = '\033[31;1m'
+            ec = '\x1b[31;1m'
         break
         case 'green':
-            ec = '\033[32;1m'
+            ec = '\x1b[32;1m'
         break
         case 'cyan':
-            ec = '\033[36;1m'
+            ec = '\x1b[36;1m'
         break
         case 'yellow':
-            ec = '\033[33;1m'
+            ec = '\x1b[33;1m'
         break
         case 'purple':
-            ec = '\033[35;1m'
+            ec = '\x1b[35;1m'
         break
     }
-    return ec + s + '\033[30;0m'
+    return ec + s + '\x1b[30;0m'
 }
 
-var casper = require('casper').create()
+var debug = true;
+var casper = require('casper').create({
+  verbose: debug,
+});
 
 casper.on('page.error', function (msg) {
-    this.echo('Error: ' + msg, 'ERROR');
+    if (debug) this.echo('Error: ' + msg, 'ERROR');
 });
 
 casper.start('https://jobmine.ccol.uwaterloo.ca/psp/SS?cmd=login')
 
 casper.then(function () {
-    this.fill('#login', {
+  var loginSelector = '#login'
+  this.waitForSelector(loginSelector, function() {
+    this.fill(loginSelector, {
         userid: casper.cli.args[1],
         pwd: casper.cli.args[2]
     }, true)
+  })
 })
 
 function printTable(headers, rows, colours, title) {
@@ -145,9 +151,11 @@ function getApps() {
     var hasRanked = false
 
     casper.thenOpen('https://jobmine.ccol.uwaterloo.ca/psc/SS/EMPLOYEE/WORK/c/UW_CO_STUDENTS.UW_CO_APP_SUMMARY.GBL', function () {
-        var apps = this.evaluate(function() {
+      var tableSelector = 'table.PSLEVEL1GRID > tbody';
+      this.waitForSelector(tableSelector, function() {
+        var apps = this.evaluate(function(tableSelector) {
             // Get the "Active apps" table
-            var appT = document.querySelectorAll('table.PSLEVEL1GRID > tbody')[0]
+            var appT = document.querySelectorAll(tableSelector)[0]
             var appActive = {}
             var cells = []
 
@@ -179,7 +187,7 @@ function getApps() {
             }
 
             return apps
-        })
+        }, tableSelector)
 
         var totals = {
             selected: 0,
@@ -193,7 +201,7 @@ function getApps() {
 
         apps.forEach(function(a) {
             if (['Not Selected', 'Not Ranked', 'Ranked'].has(a.appStatus) ||
-               (a.appStatus === 'Applied' && a.jobStatus === 'Cancelled')) {
+                (a.appStatus === 'Applied' && a.jobStatus === 'Cancelled')) {
                 colours.push('red')
                 totals.rejected += 1
             } else if (['Selected', 'Scheduled'].has(a.appStatus) ||
@@ -252,6 +260,9 @@ function getApps() {
         if (hasRanked) {
             getPotentialOffers(this, activeApps)
         }
+      }, function() {
+        if (debug) this.capture('table.png')
+      })
     })
 }
 
