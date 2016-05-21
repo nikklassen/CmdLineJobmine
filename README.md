@@ -1,7 +1,9 @@
 # CmdLineJobmine
-Command line interface to access jobmine
+
+Command line interface to access UWaterloo's Jobmine
 
 Installation
 ------------
-- requires CasperJS and PhantomJS (`npm install -g casperjs phantomjs`)
-- run with `casperjs scraper.js (apps|interviews|rankings) <username> <password>`
+- `npm install`
+- run with `node scraper.js (apps|interviews|rankings)` with your username and password in the `USERNAME` and `PASSWORD` env variables (respectively)
+- Probably requires `node >= 6.x.x`

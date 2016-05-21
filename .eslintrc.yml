@@ -1,0 +1,8 @@
+extends:
+    - google
+    - /Users/Nik/.eslintrc.yml
+installedESLint: true
+rules:
+    require-jsdoc: 0
+env:
+    node: true
