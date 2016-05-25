@@ -572,11 +572,11 @@
       form: {
         httpPort: '',
         timezoneOffset: 240,
-        userid: process.env.USERNAME,
-        pwd: process.env.PASSWORD,
+        userid: process.env.JM_USER,
+        pwd: process.env.JM_PWD,
         submit: 'Submit'
       }
-    }, function(error) {
+    }, function(error, f, h) {
       if (error) {
         console.error(error);
         return;
