@@ -127,7 +127,7 @@
     return cells.eq(i).text().trim();
   }
 
-  function getPotentialOffers(casper, numActiveApps) {
+  function getPotentialOffers(numActiveApps) {
     const p = q.defer();
     request(URLS.OFFERS, function(error, response, html) {
       if (error) {
@@ -137,10 +137,10 @@
       const $ = cheerio.load(html);
       const availableApps = parseInt($('#UW_CO_JOBSRCHDW_UW_CO_MAX_NUM_APPL').text(), 10);
       const potentialOffers = availableApps + numActiveApps - 50;
-      console.log(colour('Potential offers: ' + potentialOffers, 'purple'));
+      console.log(colour(`Potential offers: ${potentialOffers}`, 'purple'));
       p.resolve();
     });
-    return q.promise;
+    return p.promise;
   }
 
   function getApps($) {
@@ -155,7 +155,7 @@
 
     appT.find('tr').slice(1).each((i, row) => {
       const cells = $(row).find('td');
-      const jobKey = `${getCell(cells, 0)}_${getCell(cells, 1)}`;
+      const jobKey = `${getCell(cells, 1)}_${getCell(cells, 2)}`;
       appActive.add(jobKey);
     });
 
@@ -556,6 +556,11 @@
     default:
       console.error(`Usage: ${process.argv[1]} (apps | interviews | rankings)`);
       process.exit(1);
+  }
+
+  if (!(process.env.JM_USER && process.env.JM_PWD)) {
+    console.error(`Could not find username (JM_USER) or password (JM_PWD). Please set these env variables`);
+    process.exit(1);
   }
 
   request(URLS.LOGIN, function(error) {
